@@ -52,32 +52,42 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void takePicture (View view) {
+        // Ask the system whether we have a connection to the internet
+        // using wifi or data
         ConnectivityManager connMgr = (ConnectivityManager)
                 getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
         if (networkInfo != null && networkInfo.isConnected()) {
+            // The phone is online, we can safely try to take a picture
+            // and upload to the server
             dispatchPictureIntent();
         }
     }
 
     private void dispatchPictureIntent() {
+        // Create the intent to take an image
+        // We will use the existing application from the android phone
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Checks if the phone is capable of handling this intent
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            // Create the file we want to store the image
+            // Create the file we want to store the image in...
             File imageFile = null;
             try {
                 imageFile = createImageFile();
             } catch (IOException e) {
-                // TODO: 11/4/16 Log the exception that occurrs here.
                 Log.d("dispatchPictureIntent", e.getMessage().toString(), e);
             }
             if (imageFile != null) {
+                // This is the path android will use to store and find the image file
                 mImageURI = FileProvider.getUriForFile(this,
                         "alejandro.alvarado.com.streetwear.fileprovider",
                         imageFile
                 );
+                // Tell the photo application to store the image at that location
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mImageURI);
+                // Ask for permissions to take the photo from the user
                 takePictureIntent.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                // Give the photo application control to take the picture
                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
             }
         }
@@ -95,24 +105,32 @@ public class MainActivity extends AppCompatActivity {
                 null,
                 storageDir
         );
-        // Delete the file once the virtual machine is stopped
         return image;
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+        // The image application has returned and if everything is ok, proceed to reading
+        // image from URI
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
 
             try {
+                // Open the file descriptor from the URI we had saved before
                 AssetFileDescriptor assetFileDescriptor =
                         getContentResolver().openAssetFileDescriptor(mImageURI, "r");
                 FileDescriptor fileDescriptor = assetFileDescriptor.getFileDescriptor();
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                // Convert the image at that location into a JPEG file
                 BitmapFactory.decodeFileDescriptor(fileDescriptor).
                         compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
+                // Save that image into a byte array
                 byte[] imageBytes = byteArrayOutputStream.toByteArray();
                 assetFileDescriptor.close();
+                // Try to delete the image from the phone
+                // TODO: 12/17/16 Image is not being deleted properly
                 this.getContentResolver().delete(mImageURI, null, null);
+                // Upload image to the server
                 new UploadImage().execute(imageBytes);
             } catch (FileNotFoundException e) {
                 Log.d("OnActivityResult", "File was not able to be found.");
@@ -125,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
     // Async class that will allow us to upload a file to our server
     private class UploadImage extends AsyncTask<byte[], Void, String> {
 
+        // Used to prepare the image for upload
         private final String output_url = "https://streetanalyzer.herokuapp.com/file";
         private final String attachmentName = "bitmap";
         private final String attachmentFileName = "bitmap.bmp";
@@ -143,9 +162,11 @@ public class MainActivity extends AppCompatActivity {
 
         private String uploadImage(byte[] imageBytes) throws IOException {
 
+            // Open a connection to the StreetWear Server
             URL url = new URL(output_url);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             try {
+                // Apply some settings so that we can execute our POST request
                 conn.setDoOutput(true);
                 conn.setChunkedStreamingMode(0);
                 conn.setRequestProperty("Connection", "Keep-Alive");
@@ -153,9 +174,11 @@ public class MainActivity extends AppCompatActivity {
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" +
                     this.boundary);
 
+                // Send the message to the server
                 DataOutputStream out = new DataOutputStream(conn.getOutputStream());
                 writeStream(out, imageBytes);
 
+                // Get the response from the server
                 InputStream in = new BufferedInputStream(conn.getInputStream());
                 readStream(in);
             } finally {
@@ -167,6 +190,8 @@ public class MainActivity extends AppCompatActivity {
         private void writeStream(DataOutputStream out, byte[] imageBytes) {
 
             try {
+                // Prepare the message to the server
+                // Must be formatted to the POST standard
                 out.writeBytes(this.twoHyphens + this.boundary + this.crlf);
                 out.writeBytes("Content-Disposition: form-data; name=\"" +
                     this.attachmentName + "\";filename=\"" +
@@ -186,12 +211,16 @@ public class MainActivity extends AppCompatActivity {
         private void readStream(InputStream in) {
             String line = "";
             try {
+                // Gather the response from the server
                 BufferedReader reader = new BufferedReader(new InputStreamReader(in));
                 StringBuilder response = new StringBuilder(in.available());
                 while ((line = reader.readLine()) != null) {
                     response.append(line).append('\n');
                 }
                 reader.close();
+                // Do something with the response
+                // TODO: 12/17/16 The response will tell us what the results of the analyse were
+                // Need to map this result onto a map for client to view
                 line = response.toString();
             } catch (IOException e) {
                 e.printStackTrace();
