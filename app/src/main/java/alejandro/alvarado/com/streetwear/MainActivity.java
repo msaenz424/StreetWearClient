@@ -86,8 +86,6 @@ public class MainActivity extends AppCompatActivity {
                 );
                 // Tell the photo application to store the image at that location
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mImageURI);
-                // Ask for permissions to take the photo from the user
-                takePictureIntent.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 // Give the photo application control to take the picture
                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
             }
@@ -97,15 +95,11 @@ public class MainActivity extends AppCompatActivity {
     private File createImageFile() throws IOException {
         // Create the image file with a unique name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        String mImageFileName = "IMAGE_" + timeStamp + "_";
+        String mImageFileName = "IMAGE_" + timeStamp + "_.jpg";
         // Get the directory to our file provider.
         // The information for this provider is given in the manifest as <provider>
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        return File.createTempFile(
-                mImageFileName,
-                null,
-                storageDir
-        );
+        File imagePath = new File(getFilesDir(), "images");
+        return new File(imagePath, mImageFileName);
     }
 
     @Override
