@@ -1,27 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
     android:id="@+id/activity_main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingBottom="@dimen/activity_vertical_margin"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
-    android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="alejandro.alvarado.com.streetwear.MainActivity">
+    tools:context="alejandro.alvarado.com.streetwear.MainActivity"
+    android:weightSum="1">
 
     <Button
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/app_name"
-        android:onClick="takePicture"/>
+        android:text="Take Picture"
+        android:onClick="takePicture"
+        android:layout_below="@+id/image" />
+
+    <Button
+        android:id="@+id/btnOpen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Open Gallery" />
 
     <ImageView
-        android:contentDescription="Uploaded image"
-        android:id="@+id/imageDisplay"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:layout_gravity="center"
+        android:layout_width="250dp"
+        android:layout_height="250dp"
+        app:srcCompat="@android:drawable/dialog_frame"
+        android:id="@+id/imageDisplay" />
 
+    <Button
+        android:text="Upload Image"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btnUpload"
+        android:onClick="uploadImage"/>
 
-
-</RelativeLayout>
+</LinearLayout>

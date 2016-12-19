@@ -16,8 +16,10 @@ import android.provider.MediaStore;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -64,77 +66,102 @@ public class MainActivity extends AppCompatActivity {
             dispatchPictureIntent();
         }
     }
-
-    private void dispatchPictureIntent() {
-        // Create the intent to take an image
-        // We will use the existing application from the android phone
+/*
+    private void dispatchTakePictureIntent() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        // Checks if the phone is capable of handling this intent
+        // Ensure that there's a camera activity to handle the intent
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            // Create the file we want to store the image in...
-            File imageFile = null;
+            // Create the File where the photo should go
+            File photoFile = null;
             try {
-                imageFile = createImageFile();
-            } catch (IOException e) {
-                Log.d("dispatchPictureIntent", e.getMessage(), e);
+                photoFile = createImageFile();
+            } catch (IOException ex) {
+                // Error occurred while creating the File
+                ...
             }
-            if (imageFile != null) {
-                // This is the path android will use to store and find the image file
-                mImageURI = FileProvider.getUriForFile(this,
-                        "alejandro.alvarado.com.streetwear.fileprovider",
-                        imageFile
-                );
-                // Tell the photo application to store the image at that location
-                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mImageURI);
-                // Give the photo application control to take the picture
-                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this,
+                        "com.example.android.fileprovider",
+                        photoFile);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
             }
         }
     }
-
+    */
+    private void dispatchPictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE); //returns result on onActivityResult method
+        }
+    }
+/*
     private File createImageFile() throws IOException {
         // Create the image file with a unique name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        String mImageFileName = "IMAGE_" + timeStamp + "_.jpg";
+        String mImageFileName = "IMAGE_" + timeStamp + "_";
         // Get the directory to our file provider.
         // The information for this provider is given in the manifest as <provider>
-        File imagePath = new File(getFilesDir(), "images");
-        return new File(imagePath, mImageFileName);
-    }
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                mImageFileName,
+                ".jpg",
+                storageDir
+        );
 
+        // Save a file: path for use with ACTION_VIEW intents
+        mCurrentPhotoPath = image.getAbsolutePath();
+        return image;
+    }
+*/
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-
         // The image application has returned and if everything is ok, proceed to reading
         // image from URI
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-
-            try {
-                // Open the file descriptor from the URI we had saved before
-                AssetFileDescriptor assetFileDescriptor =
-                        getContentResolver().openAssetFileDescriptor(mImageURI, "r");
-                FileDescriptor fileDescriptor = assetFileDescriptor.getFileDescriptor();
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                // Convert the image at that location into a JPEG file
-                BitmapFactory.decodeFileDescriptor(fileDescriptor).
-                        compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
-                // Save that image into a byte array
-                byte[] imageBytes = byteArrayOutputStream.toByteArray();
-                assetFileDescriptor.close();
-                // Try to delete the image from the phone
-                // TODO: 12/17/16 Image is not being deleted properly
-                this.getContentResolver().delete(mImageURI, null, null);
-                // Upload image to the server
-                new UploadImage().execute(imageBytes);
-            } catch (FileNotFoundException e) {
-                Log.d("OnActivityResult", "Image file was not able to be found.");
-            } catch (NullPointerException e) {
-                Log.d("OnActivityResult", "Image file was not able to be found");
-            } catch (IOException e) {
-                Log.d("OnActivityResult", "IO Exception thrown.");
+        if (requestCode == REQUEST_IMAGE_CAPTURE){
+            if (RESULT_OK == -1) {
+                mImageURI = data.getData();
+                InputStream inputStream;
+                try {
+                    inputStream = getContentResolver().openInputStream(mImageURI);
+                    Bitmap bitmapImage = BitmapFactory.decodeStream(inputStream);
+                    mImageView.setImageBitmap(bitmapImage);
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, "Not gallery found", Toast.LENGTH_SHORT).show();
+                }
             }
         }
     }
+
+    public void uploadImage(View view){
+        try {
+            // Open the file descriptor from the URI we had saved before
+            AssetFileDescriptor assetFileDescriptor =
+                    getContentResolver().openAssetFileDescriptor(mImageURI, "r");
+            FileDescriptor fileDescriptor = assetFileDescriptor.getFileDescriptor();
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            // Convert the image at that location into a JPEG file
+            BitmapFactory.decodeFileDescriptor(fileDescriptor).
+                    compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
+            // Save that image into a byte array
+            byte[] imageBytes = byteArrayOutputStream.toByteArray();
+            assetFileDescriptor.close();
+            // Try to delete the image from the phone
+            // TODO: 12/17/16 Image is not being deleted properly
+            this.getContentResolver().delete(mImageURI, null, null);
+            // Upload image to the server
+            new UploadImage().execute(imageBytes);
+        } catch (FileNotFoundException e) {
+            Log.d("OnActivityResult", "Image file was not able to be found.");
+        } catch (NullPointerException e) {
+            Log.d("OnActivityResult", "Image file was not able to be found");
+        } catch (IOException e) {
+            Log.d("OnActivityResult", "IO Exception thrown.");
+        }
+    }
+
 
     // Async class that will allow us to upload a file to our server
     private class UploadImage extends AsyncTask<byte[], Void, String> {
