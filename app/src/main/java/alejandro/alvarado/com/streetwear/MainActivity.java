@@ -36,6 +36,7 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -75,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 imageFile = createImageFile();
             } catch (IOException e) {
-                Log.d("dispatchPictureIntent", e.getMessage().toString(), e);
+                Log.d("dispatchPictureIntent", e.getMessage(), e);
             }
             if (imageFile != null) {
                 // This is the path android will use to store and find the image file
@@ -85,8 +86,6 @@ public class MainActivity extends AppCompatActivity {
                 );
                 // Tell the photo application to store the image at that location
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mImageURI);
-                // Ask for permissions to take the photo from the user
-                takePictureIntent.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 // Give the photo application control to take the picture
                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
             }
@@ -95,17 +94,12 @@ public class MainActivity extends AppCompatActivity {
 
     private File createImageFile() throws IOException {
         // Create the image file with a unique name
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String mImageFileName = "IMAGE_" + timeStamp + "_";
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String mImageFileName = "IMAGE_" + timeStamp + "_.jpg";
         // Get the directory to our file provider.
         // The information for this provider is given in the manifest as <provider>
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File image = File.createTempFile(
-                mImageFileName,
-                null,
-                storageDir
-        );
-        return image;
+        File imagePath = new File(getFilesDir(), "images");
+        return new File(imagePath, mImageFileName);
     }
 
     @Override
@@ -133,7 +127,9 @@ public class MainActivity extends AppCompatActivity {
                 // Upload image to the server
                 new UploadImage().execute(imageBytes);
             } catch (FileNotFoundException e) {
-                Log.d("OnActivityResult", "File was not able to be found.");
+                Log.d("OnActivityResult", "Image file was not able to be found.");
+            } catch (NullPointerException e) {
+                Log.d("OnActivityResult", "Image file was not able to be found");
             } catch (IOException e) {
                 Log.d("OnActivityResult", "IO Exception thrown.");
             }
