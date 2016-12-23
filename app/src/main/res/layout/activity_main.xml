@@ -16,24 +16,11 @@
         android:onClick="takePicture"
         android:layout_below="@+id/image" />
 
-    <Button
-        android:id="@+id/btnOpen"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Open Gallery" />
-
     <ImageView
         android:layout_gravity="center"
-        android:layout_width="250dp"
-        android:layout_height="250dp"
-        app:srcCompat="@android:drawable/dialog_frame"
-        android:id="@+id/imageDisplay" />
-
-    <Button
-        android:text="Upload Image"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/btnUpload"
-        android:onClick="uploadImage"/>
+        app:srcCompat="@android:color/background_light"
+        android:id="@+id/imageDisplay" />
 
 </LinearLayout>

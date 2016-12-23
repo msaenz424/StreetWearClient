@@ -11,18 +11,14 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
-import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -32,19 +28,15 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-
 public class MainActivity extends AppCompatActivity {
 
+    private static final String FILE_NAME = "StreetWear";
     static final int REQUEST_IMAGE_CAPTURE = 1;
     private ImageView mImageView;
-    private Uri mImageURI;
+    private File mImageFile = null;
+    private Uri mImageUri = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,9 +46,50 @@ public class MainActivity extends AppCompatActivity {
         mImageView = (ImageView) findViewById(R.id.imageDisplay);
     }
 
+    // these activity lifeycle method were created only for testing
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d("onPause","paused");
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        Log.d("onRestart", "restarted");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d("onResume", "resumed");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.d("onStop", "stopped");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d("onDestroy", "destroyed");
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d("onStart", "started");
+    }
+
+    /**
+     * Checks if there is a connection to the internet using wifi or data.
+     * If there is, opens the camera app
+     * @param view
+     */
+
     public void takePicture (View view) {
-        // Ask the system whether we have a connection to the internet
-        // using wifi or data
         ConnectivityManager connMgr = (ConnectivityManager)
                 getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
@@ -66,102 +99,95 @@ public class MainActivity extends AppCompatActivity {
             dispatchPictureIntent();
         }
     }
-/*
-    private void dispatchTakePictureIntent() {
-        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        // Ensure that there's a camera activity to handle the intent
-        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            // Create the File where the photo should go
-            File photoFile = null;
-            try {
-                photoFile = createImageFile();
-            } catch (IOException ex) {
-                // Error occurred while creating the File
-                ...
-            }
-            // Continue only if the File was successfully created
-            if (photoFile != null) {
-                Uri photoURI = FileProvider.getUriForFile(this,
-                        "com.example.android.fileprovider",
-                        photoFile);
-                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
-                startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
-            }
-        }
-    }
-    */
-    private void dispatchPictureIntent() {
-        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE); //returns result on onActivityResult method
-        }
-    }
-/*
-    private File createImageFile() throws IOException {
-        // Create the image file with a unique name
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        String mImageFileName = "IMAGE_" + timeStamp + "_";
-        // Get the directory to our file provider.
-        // The information for this provider is given in the manifest as <provider>
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File image = File.createTempFile(
-                mImageFileName,
-                ".jpg",
-                storageDir
-        );
 
-        // Save a file: path for use with ACTION_VIEW intents
-        mCurrentPhotoPath = image.getAbsolutePath();
-        return image;
+    /**
+     * Calls the android phone's camera app to take a picture and save the image in
+     * a specified location and stores the uri path for later use. The response of the
+     * camera intent is passed to onActivityResult
+     */
+    private void dispatchPictureIntent() {
+        // Create the intent to take an image
+        // We will use the existing application from the android phone
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Checks if the phone is capable of handling this intent
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // Create the file we want to store the image in...
+            try {
+                mImageUri = Uri.fromFile(createImageFile());
+                if (mImageUri != null) {
+
+                    // Tell the photo application to store the image at that location
+                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mImageUri);
+                    // Give the photo application control to take the picture
+                    startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+                }
+            } catch (IOException e) {
+                Log.d("dispatchPictureIntent", e.getMessage(), e);
+            }
+        }
     }
-*/
+
+    /**
+     * Creates a file containing its path in the directory where the picture will be saved
+     *
+     * @return file of the picture
+     * @throws IOException
+     */
+
+    private File createImageFile() throws IOException {
+        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+        mImageFile = new File(path, FILE_NAME);
+
+        // Get the directory to our file provider.
+        return mImageFile;
+    }
+
+    /**
+     * Displays the picture as a thumbnail
+     */
+    private void showThumbnail(){
+        BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+        Bitmap imageBitmap = BitmapFactory.decodeFile(mImageFile.getAbsolutePath(), bmOptions);
+        mImageView.setImageBitmap(imageBitmap);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
         // The image application has returned and if everything is ok, proceed to reading
         // image from URI
-        if (requestCode == REQUEST_IMAGE_CAPTURE){
-            if (RESULT_OK == -1) {
-                mImageURI = data.getData();
-                InputStream inputStream;
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            if (mImageUri != null) {
+                showThumbnail();
                 try {
-                    inputStream = getContentResolver().openInputStream(mImageURI);
-                    Bitmap bitmapImage = BitmapFactory.decodeStream(inputStream);
-                    mImageView.setImageBitmap(bitmapImage);
+                    // Open the file descriptor from the URI we had saved before
+                    AssetFileDescriptor assetFileDescriptor =
+                            getContentResolver().openAssetFileDescriptor(mImageUri, "r");
+                    FileDescriptor fileDescriptor = assetFileDescriptor.getFileDescriptor();
+                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                    // Convert the image at that location into a JPEG file
+                    BitmapFactory.decodeFileDescriptor(fileDescriptor).
+                            compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
+                    // Save that image into a byte array
+                    byte[] imageBytes = byteArrayOutputStream.toByteArray();
+                    assetFileDescriptor.close();
+                    // Try to delete the image from the phone
+                    // TODO: (COMPLETED) 12/17/16 Image is not being deleted properly
+                    mImageFile.delete();
+                    // this.getContentResolver().delete(mImageUri, null, null);
+                    // Upload image to the server
+                    new UploadImage().execute(imageBytes);
+                    Toast.makeText(this, "Image uploaded successfully", Toast.LENGTH_LONG).show();
                 } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                    Toast.makeText(this, "Not gallery found", Toast.LENGTH_SHORT).show();
+                    Log.d("OnActivityResult", "Image file was not able to be found.");
+                } catch (NullPointerException e) {
+                    Log.d("OnActivityResult", "Image file was not able to be found");
+                } catch (IOException e) {
+                    Log.d("OnActivityResult", "IO Exception thrown.");
                 }
             }
         }
     }
-
-    public void uploadImage(View view){
-        try {
-            // Open the file descriptor from the URI we had saved before
-            AssetFileDescriptor assetFileDescriptor =
-                    getContentResolver().openAssetFileDescriptor(mImageURI, "r");
-            FileDescriptor fileDescriptor = assetFileDescriptor.getFileDescriptor();
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            // Convert the image at that location into a JPEG file
-            BitmapFactory.decodeFileDescriptor(fileDescriptor).
-                    compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
-            // Save that image into a byte array
-            byte[] imageBytes = byteArrayOutputStream.toByteArray();
-            assetFileDescriptor.close();
-            // Try to delete the image from the phone
-            // TODO: 12/17/16 Image is not being deleted properly
-            this.getContentResolver().delete(mImageURI, null, null);
-            // Upload image to the server
-            new UploadImage().execute(imageBytes);
-        } catch (FileNotFoundException e) {
-            Log.d("OnActivityResult", "Image file was not able to be found.");
-        } catch (NullPointerException e) {
-            Log.d("OnActivityResult", "Image file was not able to be found");
-        } catch (IOException e) {
-            Log.d("OnActivityResult", "IO Exception thrown.");
-        }
-    }
-
 
     // Async class that will allow us to upload a file to our server
     private class UploadImage extends AsyncTask<byte[], Void, String> {
@@ -195,7 +221,7 @@ public class MainActivity extends AppCompatActivity {
                 conn.setRequestProperty("Connection", "Keep-Alive");
                 conn.setRequestProperty("Cache-Control", "no-cache");
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" +
-                    this.boundary);
+                        this.boundary);
 
                 // Send the message to the server
                 DataOutputStream out = new DataOutputStream(conn.getOutputStream());
@@ -217,20 +243,20 @@ public class MainActivity extends AppCompatActivity {
                 // Must be formatted to the POST standard
                 out.writeBytes(this.twoHyphens + this.boundary + this.crlf);
                 out.writeBytes("Content-Disposition: form-data; name=\"" +
-                    this.attachmentName + "\";filename=\"" +
-                    this.attachmentFileName + "\"" + this.crlf);
+                        this.attachmentName + "\";filename=\"" +
+                        this.attachmentFileName + "\"" + this.crlf);
                 out.writeBytes(this.crlf);
                 out.write(imageBytes);
                 out.writeBytes(this.crlf);
                 out.writeBytes(this.twoHyphens + this.boundary + this.twoHyphens +
-                    this.crlf);
+                        this.crlf);
                 out.flush();
                 out.close();
             } catch (IOException e) {
                 Log.d("writeStream", "IO Exception when writing to out stream.");
             }
         }
-        
+
         private void readStream(InputStream in) {
             String line = "";
             try {
